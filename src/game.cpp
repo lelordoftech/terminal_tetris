@@ -9,6 +9,7 @@
 #include <string> // std::string
 #include <unistd.h> // usleep
 #include <stdlib.h> // rand
+#include <time.h>
 
 #include "game.h"
 #include "define.h"
@@ -27,8 +28,8 @@ rect game_area;
 rect label_area;
 rect info_area;
 
-game_object* current_obj = new game_object();
-game_object* next_obj = new game_object((object_type)(rand() % 5));
+game_object* current_obj = NULL;
+game_object* next_obj = NULL;
 
 uint_fast16_t game_score = 0;
 uint_fast8_t game_speed = 1;
@@ -151,6 +152,11 @@ int init()
   wrefresh(game_wnd);
   wrefresh(label_wnd);
   wrefresh(info_wnd);
+  
+  // Init game object
+  srand(time(NULL));
+  current_obj = new game_object();
+  next_obj = new game_object((object_type)(rand() % 5));
   
   return 0;
 }
