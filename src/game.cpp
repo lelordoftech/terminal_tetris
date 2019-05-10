@@ -73,6 +73,23 @@ void draw_table(WINDOW* wnd)
   }
 }
 
+bool check_touch(game_object* obj, vec2i pos_change)
+{
+  bool is_touch = false;
+  vec2i table_cell;
+  for (size_t i = 0; i < 4; i++)
+  {
+    table_cell.x = obj->get_pos().x+obj->get_data()[i].x+pos_change.x;
+    table_cell.y = obj->get_pos().y+obj->get_data()[i].y+pos_change.y;
+    if ((table_cell.y >= 0) && (table_obj[table_cell.x][table_cell.y].has_data))
+    {
+      is_touch = true;
+      break;
+    }
+  }
+  return is_touch;
+}
+
 int init()
 {
   initscr();
@@ -195,6 +212,7 @@ void run()
   vec2i info_pos;
   vec2i nmin_pos;
   vec2i nmax_pos;
+  vec2i table_cell;
   int_fast8_t rand_x = 0;
   
   while(1)
@@ -210,7 +228,9 @@ void run()
     // Drop object from top to bottom
     if (tick == 100)
     {
-      if (pos.y + max_pos.y + 1 < GAME_HEIGHT)
+      // Check touch
+      if ((pos.y + max_pos.y + 1 < GAME_HEIGHT) &&
+          (check_touch(current_obj, {0, 1}) == false))
       {
         pos.y += 1;
       }
@@ -219,7 +239,10 @@ void run()
         // Update table_obj
         for (size_t i = 0; i < 4; i++)
         {
-      table_obj[pos.x+current_obj->get_data()[i].x][pos.y+current_obj->get_data()[i].y].update(current_obj->get_color(), true);
+          table_cell.x = pos.x+current_obj->get_data()[i].x;
+          table_cell.y = pos.y+current_obj->get_data()[i].y;
+          if (table_cell.y >= 0)
+            table_obj[table_cell.x][table_cell.y].update(current_obj->get_color(), true);
         }
         request_obj = true;
       }
@@ -283,17 +306,17 @@ void run()
         break;
       case KEY_DOWN:
       case 's':
-        if (max_pos.y < GAME_HEIGHT)
+        if ((max_pos.y < GAME_HEIGHT) && (check_touch(current_obj, {0, 1}) == false))
           pos.y += 1;
         break;
       case KEY_LEFT:
       case 'a':
-        if (min_pos.x > 0)
+        if ((min_pos.x > 0) && (check_touch(current_obj, {-1, 0}) == false))
           pos.x -= 1;
         break;
       case KEY_RIGHT:
       case 'd':
-        if (max_pos.x < GAME_WIDTH/2)
+        if ((max_pos.x < GAME_WIDTH/2) && (check_touch(current_obj, {1, 0}) == false))
           pos.x += 1;
         break;
       case 'p':
