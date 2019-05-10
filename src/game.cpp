@@ -56,9 +56,9 @@ void draw_table(WINDOW* wnd)
 {
   uint_fast8_t color = BLACK_PAIR;
   bool has_data = false;
-  for (size_t i = 0; i < GAME_WIDTH/2; i++)
+  for (size_t j = 0; j < GAME_HEIGHT; j++)
   {
-    for (size_t j = 0; j < GAME_HEIGHT; j++)
+    for (size_t i = 0; i < GAME_WIDTH/2; i++)
     {
       color = table_obj[i][j].color;
       has_data = table_obj[i][j].has_data;
@@ -70,6 +70,18 @@ void draw_table(WINDOW* wnd)
         wattroff(wnd, COLOR_PAIR(color));
       }
     }
+  }
+}
+
+void update_table(game_object* obj)
+{
+  vec2i table_cell;
+  for (size_t i = 0; i < 4; i++)
+  {
+    table_cell.x = obj->get_pos().x+obj->get_data()[i].x;
+    table_cell.y = obj->get_pos().y+obj->get_data()[i].y;
+    if (table_cell.y >= 0)
+      table_obj[table_cell.x][table_cell.y].update(current_obj->get_color(), true);
   }
 }
 
@@ -88,6 +100,57 @@ bool check_touch(game_object* obj, vec2i pos_change)
     }
   }
   return is_touch;
+}
+
+void delete_row(uint_fast8_t row)
+{
+  for (size_t j = row; j > 0; j--)
+  {
+    for (size_t i = 0; i < GAME_WIDTH/2; i++)
+    {
+      if (j > 0)
+      {
+        table_obj[i][j].color = table_obj[i][j-1].color;
+        table_obj[i][j].has_data = table_obj[i][j-1].has_data;
+      }
+      else
+      {
+        table_obj[i][j].has_data = false;
+      }
+    }
+  }
+}
+
+uint_fast8_t scoring()
+{
+  uint_fast8_t score = 0;
+  uint_fast8_t row_count = 0;
+  // Check full row in table_obj
+  for (size_t j = 0; j < GAME_HEIGHT; j++)
+  {
+    row_count = 0;
+    for (size_t i = 0; i < GAME_WIDTH/2; i++)
+    {
+      if (table_obj[i][j].has_data)
+      {
+        row_count += 1;
+      }
+    }
+    if (row_count == GAME_WIDTH/2)
+    {
+      score += 1;
+      // delete this row
+      delete_row(j);
+    }
+  }
+  return score;
+}
+
+void update_score(WINDOW* wnd, uint_fast16_t score)
+{
+  wattron(info_wnd, COLOR_PAIR(COLOR_WHITE));
+  mvwprintw(wnd, Y_INFO, 0, "%08d", score);
+  wattroff(info_wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 int init()
@@ -176,8 +239,8 @@ int init()
   mvwprintw(label_wnd, Y_INFO + 15, 1, "%8s", "STATUS");
   wattroff(label_wnd, COLOR_PAIR(COLOR_WHITE));
   
+  update_score(info_wnd, game_score);
   wattron(info_wnd, COLOR_PAIR(COLOR_WHITE));
-  mvwprintw(info_wnd, Y_INFO, 0, "%08d", game_score);
   mvwprintw(info_wnd, Y_INFO + 2, 0, "%08d", 9999);
   //mvwaddch(info_wnd, 4, 0, ACS_CKBOARD);
   mvwprintw(info_wnd, Y_INFO + 9, 0, "%d", game_speed);
@@ -212,7 +275,6 @@ void run()
   vec2i info_pos;
   vec2i nmin_pos;
   vec2i nmax_pos;
-  vec2i table_cell;
   int_fast8_t rand_x = 0;
   
   while(1)
@@ -236,14 +298,9 @@ void run()
       }
       else
       {
-        // Update table_obj
-        for (size_t i = 0; i < 4; i++)
-        {
-          table_cell.x = pos.x+current_obj->get_data()[i].x;
-          table_cell.y = pos.y+current_obj->get_data()[i].y;
-          if (table_cell.y >= 0)
-            table_obj[table_cell.x][table_cell.y].update(current_obj->get_color(), true);
-        }
+        update_table(current_obj);
+        game_score += scoring();
+        update_score(info_wnd, game_score);
         request_obj = true;
       }
     }
@@ -335,8 +392,8 @@ void run()
 
     draw_table(game_wnd);
     current_obj->set_pos(pos);
-    mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", pos.x, pos.y);
-    mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", max_pos.x, max_pos.y);
+    //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", pos.x, pos.y);
+    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", max_pos.x, max_pos.y);
     draw_object(game_wnd, current_obj);
 
     // refresh all
