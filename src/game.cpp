@@ -45,8 +45,8 @@ void draw_object(WINDOW* wnd, game_object* obj)
   wattron(wnd, COLOR_PAIR(color));
   for (size_t i = 0; i < 4; i++)
   {
-    mvwaddch(wnd, pos.y+data[i].y, pos.x+2*data[i].x, ' '|A_REVERSE);
-    mvwaddch(wnd, pos.y+data[i].y, pos.x+2*data[i].x+1, ' '|A_REVERSE);
+    mvwaddch(wnd, pos.y+data[i].y, 2*(pos.x+data[i].x), ' '|A_REVERSE);
+    mvwaddch(wnd, pos.y+data[i].y, 2*(pos.x+data[i].x)+1, ' '|A_REVERSE);
   }
   wattroff(wnd, COLOR_PAIR(color));
 }
@@ -200,17 +200,18 @@ void run()
     // Change from local to global coordinate
     min_pos.x += pos.x;
     min_pos.y += pos.y;
-    max_pos.x += pos.x + 2;
+    max_pos.x += pos.x + 1;
     max_pos.y += pos.y + 1;
 
     if (request_obj)
     {
-      rand_x = 2*(rand() % 10); // 0~18
+      // Get new obj
+      rand_x = rand() % 10; // 0~9
       current_obj->init_data(next_obj->get_type());
       min_pos = current_obj->get_min_pos();
       max_pos = current_obj->get_max_pos();
       //mvwprintw(label_wnd, Y_INFO + 17, 0, "%2d %2d", rand_x, max_pos.x);
-      if (rand_x + max_pos.x + 2 > GAME_WIDTH) rand_x = GAME_WIDTH - max_pos.x - 2;
+      if (rand_x + max_pos.x + 1 > GAME_WIDTH/2) rand_x = GAME_WIDTH/2 - max_pos.x - 1;
       //mvwprintw(label_wnd, Y_INFO + 18, 0, "%2d", rand_x);
       // Update new pos
       pos.x = rand_x;
@@ -218,9 +219,9 @@ void run()
       // Change from local to global coordinate
       min_pos.x += pos.x;
       min_pos.y += pos.y;
-      max_pos.x += pos.x + 2;
+      max_pos.x += pos.x + 1;
       max_pos.y += pos.y + 1;
-      //if (max_pos.x < GAME_WIDTH)
+      // Update info_wnd
       next_obj->init_data((object_type)(rand() % 5));
       next_obj->set_pos({0, Y_INFO + 4});
       info_pos = next_obj->get_pos();
@@ -229,10 +230,10 @@ void run()
       // Change from local to global coordinate
       nmin_pos.x += info_pos.x;
       nmin_pos.y += info_pos.y;
-      nmax_pos.x += info_pos.x + 2;
+      nmax_pos.x += info_pos.x + 1;
       nmax_pos.y += info_pos.y + 1;
       // Move to the center of info_wnd
-      info_pos.x += 4-(nmax_pos.x-nmin_pos.x)/2;
+      info_pos.x += 2-(nmax_pos.x-nmin_pos.x)/2;
       info_pos.y += 2-(nmax_pos.y-nmin_pos.y)/2;
       next_obj->set_pos(info_pos);
       //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", info_pos.x, info_pos.y);
@@ -261,15 +262,15 @@ void run()
       case KEY_LEFT:
       case 'a':
         if (min_pos.x > 0)
-          pos.x -= 2;
+          pos.x -= 1;
         break;
       case KEY_RIGHT:
       case 'd':
-        if (max_pos.x < GAME_WIDTH)
-          pos.x += 2;
+        if (max_pos.x < GAME_WIDTH/2)
+          pos.x += 1;
         break;
       case 'p':
-        if (max_pos.x <= GAME_WIDTH)
+        if (max_pos.x <= GAME_WIDTH/2)
           request_obj = true;
         break;
       case 'r':

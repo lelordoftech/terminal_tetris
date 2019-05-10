@@ -76,7 +76,6 @@ vec2i game_object::get_min_pos()
       min_pos.y = this->data[i].y;
     }
   }
-  min_pos.x = 2*min_pos.x;
   return min_pos;
 }
 
@@ -95,7 +94,6 @@ vec2i game_object::get_max_pos()
       max_pos.y = this->data[i].y;
     }
   }
-  max_pos.x = 2*max_pos.x;
   return max_pos;
 }
 
