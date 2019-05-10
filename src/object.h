@@ -10,6 +10,15 @@
 
 #include "define.h"
 
+struct table_cell {
+  uint_fast8_t color;
+  bool has_data;
+  table_cell() : color(BLACK_PAIR), has_data(false) {};
+  void update(uint_fast8_t _color, bool _has_data) {
+    color = _color; has_data = _has_data;
+  };
+};
+
 class game_object
 {
 protected:

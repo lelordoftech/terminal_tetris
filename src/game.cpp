@@ -30,6 +30,7 @@ rect info_area;
 
 game_object* current_obj = NULL;
 game_object* next_obj = NULL;
+struct table_cell table_obj[GAME_WIDTH/2][GAME_HEIGHT];
 
 uint_fast16_t game_score = 0;
 uint_fast8_t game_speed = 1;
@@ -49,6 +50,27 @@ void draw_object(WINDOW* wnd, game_object* obj)
     mvwaddch(wnd, pos.y+data[i].y, 2*(pos.x+data[i].x)+1, ' '|A_REVERSE);
   }
   wattroff(wnd, COLOR_PAIR(color));
+}
+
+void draw_table(WINDOW* wnd)
+{
+  uint_fast8_t color = BLACK_PAIR;
+  bool has_data = false;
+  for (size_t i = 0; i < GAME_WIDTH/2; i++)
+  {
+    for (size_t j = 0; j < GAME_HEIGHT; j++)
+    {
+      color = table_obj[i][j].color;
+      has_data = table_obj[i][j].has_data;
+      if (has_data)
+      {
+        wattron(wnd, COLOR_PAIR(color));
+        mvwaddch(wnd, j, 2*i, ' '|A_REVERSE);
+        mvwaddch(wnd, j, 2*i+1, ' '|A_REVERSE);
+        wattroff(wnd, COLOR_PAIR(color));
+      }
+    }
+  }
 }
 
 int init()
@@ -194,6 +216,11 @@ void run()
       }
       else
       {
+        // Update table_obj
+        for (size_t i = 0; i < 4; i++)
+        {
+      table_obj[pos.x+current_obj->get_data()[i].x][pos.y+current_obj->get_data()[i].y].update(current_obj->get_color(), true);
+        }
         request_obj = true;
       }
     }
@@ -270,8 +297,8 @@ void run()
           pos.x += 1;
         break;
       case 'p':
-        if (max_pos.x <= GAME_WIDTH/2)
-          request_obj = true;
+        //if (max_pos.x <= GAME_WIDTH/2)
+        //  request_obj = true;
         break;
       case 'r':
         current_obj->rotate();
@@ -283,6 +310,7 @@ void run()
 
     draw_object(info_wnd, next_obj);
 
+    draw_table(game_wnd);
     current_obj->set_pos(pos);
     mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", pos.x, pos.y);
     mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", max_pos.x, max_pos.y);
