@@ -22,11 +22,13 @@ WINDOW* main_wnd;
 WINDOW* game_wnd;
 WINDOW* label_wnd;
 WINDOW* info_wnd;
+WINDOW* panel_wnd;
 
 rect screen_area;
 rect game_area;
 rect label_area;
 rect info_area;
+rect panel_area;
 
 game_object* current_obj = NULL;
 game_object* next_obj = NULL;
@@ -72,7 +74,7 @@ void draw_table(WINDOW* wnd)
       else
       {
         // Clear cell
-        mvwaddch(wnd, j, 2*i, ' ');
+        mvwaddch(wnd, j, 2*i, '`');
         mvwaddch(wnd, j, 2*i+1, ' ');
       }
     }
@@ -165,35 +167,27 @@ uint_fast8_t scoring()
 
 void update_score(WINDOW* wnd, uint_fast16_t score)
 {
-  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(wnd, Y_INFO, 0, "%08d", score);
-  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 void update_speed(WINDOW* wnd, uint_fast16_t speed)
 {
-  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(wnd, Y_INFO + 9, 0, "%d", speed);
-  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 void update_level(WINDOW* wnd, uint_fast16_t level)
 {
-  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(wnd, Y_INFO + 11, 0, "%d", level);
-  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 void update_status(WINDOW* wnd, game_state status)
 {
-  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
   if (status == GAME_OVER)
     mvwprintw(wnd, Y_INFO + 15, 0, "%s", "OVER   ");
   else if (status == GAME_PAUSE)
     mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PAUSING");
   else
     mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PLAYING");
-  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 void game_over_text(WINDOW* wnd)
@@ -236,10 +230,11 @@ int init()
   // game area 20x20
   // label area 8x20
   // info area 9x20
-  screen_area.update(0, 0, GAME_WIDTH+LABEL_WIDTH+INFO_WIDTH+3, GAME_HEIGHT+2);
+  screen_area.update(0, 0, GAME_WIDTH+LABEL_WIDTH+INFO_WIDTH+3, GAME_HEIGHT+PANEL_HEIGHT+3);
   game_area.update(1, 1, GAME_WIDTH, GAME_HEIGHT);
-  label_area.update(1+GAME_WIDTH + 1, 1, LABEL_WIDTH, GAME_HEIGHT);
-  info_area.update(2+GAME_WIDTH + LABEL_WIDTH, 1, INFO_WIDTH, GAME_HEIGHT);
+  label_area.update(GAME_WIDTH + 2, 1, LABEL_WIDTH, GAME_HEIGHT);
+  info_area.update(GAME_WIDTH + LABEL_WIDTH + 2, 1, INFO_WIDTH, GAME_HEIGHT);
+  panel_area.update(1, GAME_HEIGHT + 2, GAME_WIDTH+LABEL_WIDTH+INFO_WIDTH+1, PANEL_HEIGHT);
   
   // multi windows
   // newwin nlines, ncols, begin_y, begin_x
@@ -247,6 +242,7 @@ int init()
   game_wnd = newwin(game_area.height(), game_area.width(), game_area.top(), game_area.left());
   label_wnd = newwin(label_area.height(), label_area.width(), label_area.top(), label_area.left());
   info_wnd = newwin(info_area.height(), info_area.width(), info_area.top(), info_area.left());
+  panel_wnd = newwin(panel_area.height(), panel_area.width(), panel_area.top(), panel_area.left());
   
   // useful color pairs
   init_pair(BLACK_PAIR, COLOR_BLACK, COLOR_BLACK);
@@ -259,9 +255,10 @@ int init()
   init_pair(WHITE_PAIR, COLOR_WHITE, COLOR_BLACK);
   
   // color for windows
-  wbkgd(game_wnd, COLOR_PAIR(GREEN_PAIR));
-  wbkgd(label_wnd, COLOR_PAIR(GREEN_PAIR));
-  wbkgd(info_wnd, COLOR_PAIR(GREEN_PAIR));
+  wbkgd(game_wnd, COLOR_PAIR(WHITE_PAIR));
+  wbkgd(label_wnd, COLOR_PAIR(WHITE_PAIR));
+  wbkgd(info_wnd, COLOR_PAIR(WHITE_PAIR));
+  wbkgd(panel_wnd, COLOR_PAIR(WHITE_PAIR));
   
   // enable function keys
   keypad(game_wnd, true);
@@ -272,11 +269,14 @@ int init()
   // frame around screen
   wattron(main_wnd, A_BOLD); // active attribute for drawing
   box(main_wnd, 0, 0); // draw a bouding box around main_wnd
+  mvwprintw(main_wnd, 0, (GAME_WIDTH+2)/2-5, "%s", "[ TETRIS ]");
   wattroff(main_wnd, A_BOLD); // inactive attribute for drawing
   
-  // vertical dividing line
+  // dividing line
   wmove(main_wnd, game_area.top(), game_area.right());
   wvline(main_wnd, ACS_VLINE, game_area.height());
+  wmove(main_wnd, game_area.bottom(), game_area.left());
+  whline(main_wnd, ACS_HLINE, panel_area.width());
   
   // game info
   // SCORE
@@ -286,7 +286,6 @@ int init()
   // LEVEL
   // SOUND
   // STATUS
-  wattron(label_wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(label_wnd, Y_INFO, 1, "%8s", "SCORE");
   mvwprintw(label_wnd, Y_INFO + 2, 1, "%8s", "HI-SCORE");
   mvwprintw(label_wnd, Y_INFO + 4, 1, "%8s", "NEXT");
@@ -294,24 +293,37 @@ int init()
   mvwprintw(label_wnd, Y_INFO + 11, 1, "%8s", "LEVEL");
   mvwprintw(label_wnd, Y_INFO + 13, 1, "%8s", "SOUND");
   mvwprintw(label_wnd, Y_INFO + 15, 1, "%8s", "STATUS");
-  wattroff(label_wnd, COLOR_PAIR(COLOR_WHITE));
   
   update_score(info_wnd, game_score);
-  wattron(info_wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(info_wnd, Y_INFO + 2, 0, "%08d", 9999);
-  //mvwaddch(info_wnd, 4, 0, ACS_CKBOARD);
   mvwprintw(info_wnd, Y_INFO + 13, 0, "OFF");
-  wattroff(info_wnd, COLOR_PAIR(COLOR_WHITE));
   update_speed(info_wnd, game_speed);
   update_level(info_wnd, game_level);
   game_status = GAME_PLAYING;
   update_status(info_wnd, game_status);
+  
+  // draw panel
+  mvwaddch(panel_wnd, 1, 8, ACS_UARROW);
+  mvwaddch(panel_wnd, 2, 8, 'w');
+  mvwaddch(panel_wnd, 4, 2, ACS_LARROW);
+  mvwaddch(panel_wnd, 4, 4, 'a');
+  mvwaddch(panel_wnd, 4, 14, ACS_RARROW);
+  mvwaddch(panel_wnd, 4, 12, 'd');
+  mvwaddch(panel_wnd, 6, 8, 's');
+  mvwaddch(panel_wnd, 7, 8, ACS_DARROW);
+  
+  mvwaddch(panel_wnd, 2, 26, ACS_ULCORNER);
+  mvwaddch(panel_wnd, 2, 34, ACS_URCORNER);
+  mvwprintw(panel_wnd, 4, 28, "%s", "SPACE");
+  mvwaddch(panel_wnd, 6, 26, ACS_LLCORNER);
+  mvwaddch(panel_wnd, 6, 34, ACS_LRCORNER);
   
   // initial draw
   wrefresh(main_wnd);
   wrefresh(game_wnd);
   wrefresh(label_wnd);
   wrefresh(info_wnd);
+  wrefresh(panel_wnd);
   
   // Init game object
   srand(time(NULL));
@@ -553,7 +565,6 @@ void run()
     // Update current obj
     current_obj->set_pos(cur_pos);
     //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", cur_pos.x, cur_pos.y);
-    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%c", in_char);
     draw_object(game_wnd, current_obj);
     wrefresh(game_wnd);
     wrefresh(info_wnd);
@@ -573,5 +584,6 @@ void close()
   delwin(game_wnd);
   delwin(label_wnd);
   delwin(info_wnd);
+  delwin(panel_wnd);
   endwin();
 }

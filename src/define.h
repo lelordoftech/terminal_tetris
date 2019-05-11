@@ -14,6 +14,7 @@
 #define GAME_HEIGHT 20
 #define LABEL_WIDTH 10
 #define INFO_WIDTH 9
+#define PANEL_HEIGHT 9
 
 #define BLACK_PAIR 0
 #define RED_PAIR 1
