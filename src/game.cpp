@@ -165,9 +165,9 @@ uint_fast8_t scoring()
 
 void update_score(WINDOW* wnd, uint_fast16_t score)
 {
-  wattron(info_wnd, COLOR_PAIR(COLOR_WHITE));
+  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(wnd, Y_INFO, 0, "%08d", score);
-  wattroff(info_wnd, COLOR_PAIR(COLOR_WHITE));
+  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
 void update_status(WINDOW* wnd, game_state status)
@@ -178,7 +178,7 @@ void update_status(WINDOW* wnd, game_state status)
   else if (status == GAME_PAUSE)
     mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PAUSING");
   else
-    mvwprintw(info_wnd, Y_INFO + 15, 0, "%s", "PLAYING");
+    mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PLAYING");
   wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
@@ -250,16 +250,10 @@ int init()
   wbkgd(info_wnd, COLOR_PAIR(GREEN_PAIR));
   
   // enable function keys
-  keypad(main_wnd, true);
   keypad(game_wnd, true);
-  keypad(label_wnd, true);
-  keypad(info_wnd, true);
   
   // disable input blocking
-  nodelay(main_wnd, true);
   nodelay(game_wnd, true);
-  nodelay(label_wnd, true);
-  nodelay(info_wnd, true);
   
   // frame around screen
   wattron(main_wnd, A_BOLD); // active attribute for drawing
@@ -296,6 +290,8 @@ int init()
   mvwprintw(info_wnd, Y_INFO + 11, 0, "%d", game_level);
   mvwprintw(info_wnd, Y_INFO + 13, 0, "OFF");
   wattroff(info_wnd, COLOR_PAIR(COLOR_WHITE));
+  game_status = GAME_PLAYING;
+  update_status(info_wnd, game_status);
   
   // initial draw
   wrefresh(main_wnd);
@@ -308,9 +304,6 @@ int init()
   current_obj = new game_object();
   next_obj = new game_object((object_type)(rand() % 5));
   
-  game_status = GAME_PLAYING;
-  update_status(info_wnd, game_status);
-
   return 0;
 }
 
@@ -330,12 +323,33 @@ void run()
   
   while (1)
   {
-    if (game_status == GAME_OVER)
+    // Loop in case PAUSE/OVER
+    if (game_status != GAME_PLAYING)
     {
-      in_char = wgetch(main_wnd);
+      in_char = wgetch(game_wnd);
       in_char = tolower(in_char);
-      if (in_char == 'r') request_obj = new_game();
-      usleep(1000); // 10 ms
+      switch(in_char)
+      {
+        case 'q':
+          exit_requested = true;
+          break;
+        case 'p':
+          if (game_status == GAME_PAUSE)
+          {
+            game_status = GAME_PLAYING;
+            update_status(info_wnd, game_status);
+          }
+          break;
+        case 'r':
+          if (game_status == GAME_OVER)
+            request_obj = new_game();
+          break;
+        default:
+          break;
+      }
+      if (exit_requested) break;
+
+      usleep(100000); // 100 ms
       continue;
     }
 
@@ -428,7 +442,7 @@ void run()
      * KEY_LEFT/a: Move left
      * KEY_RIGHT/d: Mode right
      */
-    in_char = wgetch(main_wnd);
+    in_char = wgetch(game_wnd);
     in_char = tolower(in_char);
     switch(in_char)
     {
@@ -436,10 +450,10 @@ void run()
         exit_requested = true;
         break;
       case 'p':
-        //if (max_pos.x <= GAME_WIDTH/2)
-        //  request_obj = true;
-        if (game_status == GAME_PLAYING) game_status = GAME_PAUSE;
-        else if (game_status == GAME_PAUSE) game_status = GAME_PLAYING;
+        if (game_status == GAME_PLAYING)
+          game_status = GAME_PAUSE;
+        else if (game_status == GAME_PAUSE)
+          game_status = GAME_PLAYING;
         update_status(info_wnd, game_status);
         break;
       case 'r':
@@ -515,11 +529,7 @@ void run()
     //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", cur_pos.x, cur_pos.y);
     //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", center.x, center.y);
     draw_object(game_wnd, current_obj);
-
-    // refresh all
-    //wrefresh(main_wnd);
     wrefresh(game_wnd);
-    wrefresh(label_wnd);
     wrefresh(info_wnd);
 
     usleep(10000); // 10 ms
