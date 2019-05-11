@@ -26,6 +26,15 @@
 
 #define Y_INFO 1 // for draw label and info windows
 
+// delay (ms) = TICK_COND/game_speed
+// game_speed =  1 -> delay 50ms
+// game_speed = 10 -> delay 5ms
+#define TICK_COND 50
+// complete 100 object -> increase speed [1~255]
+#define SPEED_COND 100
+// complete 200 object -> increase level [1~255]
+#define LEVEL_COND 200
+
 enum game_state {
   GAME_OVER=0,
   GAME_PAUSE=1,

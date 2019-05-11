@@ -170,6 +170,20 @@ void update_score(WINDOW* wnd, uint_fast16_t score)
   wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
 }
 
+void update_speed(WINDOW* wnd, uint_fast16_t speed)
+{
+  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
+  mvwprintw(wnd, Y_INFO + 9, 0, "%d", speed);
+  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
+}
+
+void update_level(WINDOW* wnd, uint_fast16_t level)
+{
+  wattron(wnd, COLOR_PAIR(COLOR_WHITE));
+  mvwprintw(wnd, Y_INFO + 11, 0, "%d", level);
+  wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
+}
+
 void update_status(WINDOW* wnd, game_state status)
 {
   wattron(wnd, COLOR_PAIR(COLOR_WHITE));
@@ -286,10 +300,10 @@ int init()
   wattron(info_wnd, COLOR_PAIR(COLOR_WHITE));
   mvwprintw(info_wnd, Y_INFO + 2, 0, "%08d", 9999);
   //mvwaddch(info_wnd, 4, 0, ACS_CKBOARD);
-  mvwprintw(info_wnd, Y_INFO + 9, 0, "%d", game_speed);
-  mvwprintw(info_wnd, Y_INFO + 11, 0, "%d", game_level);
   mvwprintw(info_wnd, Y_INFO + 13, 0, "OFF");
   wattroff(info_wnd, COLOR_PAIR(COLOR_WHITE));
+  update_speed(info_wnd, game_speed);
+  update_level(info_wnd, game_level);
   game_status = GAME_PLAYING;
   update_status(info_wnd, game_status);
   
@@ -310,6 +324,7 @@ int init()
 void run()
 {
   uint_fast8_t tick = 0;
+  uint_fast8_t obj_count = 0;
   int in_char;
   bool exit_requested = false;
   bool request_obj = true;
@@ -386,6 +401,17 @@ void run()
       draw_object(info_wnd, next_obj);
 
       request_obj = false;
+
+      obj_count += 1 ;
+      if (obj_count%SPEED_COND == 0) {
+        game_speed += 1;
+        update_speed(info_wnd, game_speed);
+      }
+      if (obj_count%LEVEL_COND == 0) {
+        game_level += 1;
+        obj_count = 0;
+        update_level(info_wnd, game_level);
+      }
     }
 
     /*
@@ -397,7 +423,7 @@ void run()
     min_pos = current_obj->get_min_pos();
     max_pos = current_obj->get_max_pos();
     // Drop object from top to bottom
-    if (tick == 100)
+    if (tick == (uint_fast8_t)(TICK_COND/game_speed))
     {
       // Check touch
       if ((cur_pos.y + max_pos.y + 1 < GAME_HEIGHT) &&
@@ -527,7 +553,7 @@ void run()
     // Update current obj
     current_obj->set_pos(cur_pos);
     //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", cur_pos.x, cur_pos.y);
-    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", center.x, center.y);
+    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%c", in_char);
     draw_object(game_wnd, current_obj);
     wrefresh(game_wnd);
     wrefresh(info_wnd);
@@ -536,7 +562,8 @@ void run()
 
     if (game_status == GAME_PLAYING)
       tick +=1;
-    if (tick >= 101) tick = 0;
+    if (tick >= (uint_fast8_t)(TICK_COND/game_speed)+1)
+      tick = 0;
   }
 }
 
