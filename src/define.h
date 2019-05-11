@@ -26,6 +26,12 @@
 
 #define Y_INFO 1 // for draw label and info windows
 
+enum game_state {
+  GAME_OVER=0,
+  GAME_PAUSE=1,
+  GAME_PLAYING=2
+};
+
 enum object_type {
   L=0,
   T=1,
