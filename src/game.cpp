@@ -79,6 +79,23 @@ void draw_table(WINDOW* wnd)
   }
 }
 
+bool check_touch(game_object* obj, vec2i pos_change)
+{
+  bool is_touch = false;
+  vec2i table_cell;
+  for (size_t i = 0; i < 4; i++)
+      {
+    table_cell.x = obj->get_pos().x+obj->get_data()[i].x+pos_change.x;
+    table_cell.y = obj->get_pos().y+obj->get_data()[i].y+pos_change.y;
+    if ((table_cell.y >= 0) && (table_obj[table_cell.x][table_cell.y].has_data))
+        {
+      is_touch = true;
+      break;
+        }
+      }
+  return is_touch;
+}
+
 void update_table(game_object* obj)
 {
   vec2i table_cell;
@@ -87,25 +104,19 @@ void update_table(game_object* obj)
     table_cell.x = obj->get_pos().x+obj->get_data()[i].x;
     table_cell.y = obj->get_pos().y+obj->get_data()[i].y;
     if (table_cell.y >= 0)
-      table_obj[table_cell.x][table_cell.y].update(current_obj->get_color(), true);
+      table_obj[table_cell.x][table_cell.y].update(obj->get_color(), true);
   }
 }
 
-bool check_touch(game_object* obj, vec2i pos_change)
+void reset_table()
 {
-  bool is_touch = false;
-  vec2i table_cell;
-  for (size_t i = 0; i < 4; i++)
+  for (size_t j = 0; j < GAME_HEIGHT; j++)
   {
-    table_cell.x = obj->get_pos().x+obj->get_data()[i].x+pos_change.x;
-    table_cell.y = obj->get_pos().y+obj->get_data()[i].y+pos_change.y;
-    if ((table_cell.y >= 0) && (table_obj[table_cell.x][table_cell.y].has_data))
+    for (size_t i = 0; i < GAME_WIDTH/2; i++)
     {
-      is_touch = true;
-      break;
+      table_obj[i][j].update(BLACK_PAIR, false);
     }
   }
-  return is_touch;
 }
 
 void delete_row(uint_fast8_t row)
@@ -116,8 +127,8 @@ void delete_row(uint_fast8_t row)
     {
       if (j > 0)
       {
-        table_obj[i][j].color = table_obj[i][j-1].color;
-        table_obj[i][j].has_data = table_obj[i][j-1].has_data;
+        // Copy data of above cell
+        table_obj[i][j].update(table_obj[i][j-1].color, table_obj[i][j-1].has_data);
       }
       else
       {
@@ -165,7 +176,7 @@ void update_status(WINDOW* wnd, game_state status)
   if (status == GAME_OVER)
     mvwprintw(wnd, Y_INFO + 15, 0, "%s", "OVER   ");
   else if (status == GAME_PAUSE)
-    mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PAUSE  ");
+    mvwprintw(wnd, Y_INFO + 15, 0, "%s", "PAUSING");
   else
     mvwprintw(info_wnd, Y_INFO + 15, 0, "%s", "PLAYING");
   wattroff(wnd, COLOR_PAIR(COLOR_WHITE));
@@ -187,8 +198,7 @@ bool new_game()
   update_score(info_wnd, game_score);
   game_status = GAME_PLAYING;
   update_status(info_wnd, game_status);
-  for (size_t j = 0; j < GAME_HEIGHT; j++)
-    delete_row(j);
+  reset_table();
   return true;
 }
 
@@ -310,126 +320,117 @@ void run()
   int in_char;
   bool exit_requested = false;
   bool request_obj = true;
-  vec2i pos;
+  vec2i cur_pos;
   vec2i min_pos;
   vec2i max_pos;
-  vec2i info_pos;
-  vec2i nmin_pos;
-  vec2i nmax_pos;
+  uint_fast8_t cur_score = 0;
   int_fast8_t rand_x = 0;
   
   while (1)
   {
-    // Clear all game_wnd
-    werase(game_wnd);
-    // Clear info_wnd NEXT
-    mvwprintw(info_wnd, Y_INFO + 4, 0, "%36s", " ");
+    if (game_status == GAME_OVER)
+    {
+      in_char = wgetch(main_wnd);
+      in_char = tolower(in_char);
+      if (in_char == 'r') request_obj = new_game();
+      usleep(1000); // 10 ms
+      continue;
+    }
 
-    pos = current_obj->get_pos();
+    /*
+     * Create new obj
+     */
+    if (request_obj)
+    {
+      // Get new data
+      //  Update current obj by next obj
+      current_obj->init_data(next_obj->get_type());
+      max_pos = current_obj->get_max_pos();
+      // Random x position
+      rand_x = rand() % 10; // 0~9
+      if (rand_x + max_pos.x + 1 > GAME_WIDTH/2) rand_x = GAME_WIDTH/2 - max_pos.x - 1;
+      // Update new cur_pos
+      cur_pos.x = rand_x;
+      cur_pos.y = -max_pos.y-1; // should start over screen
+      current_obj->set_pos(cur_pos);
+
+      //  Change next obj with random obj type
+      next_obj->init_data((object_type)(rand() % 5));
+      min_pos = next_obj->get_min_pos();
+      max_pos = next_obj->get_max_pos();
+      // Move to the center of info_wnd
+      cur_pos.x = 2-(max_pos.x-min_pos.x+1)/2;
+      cur_pos.y = 2-(max_pos.y-min_pos.y+1)/2 + Y_INFO + 4;
+      next_obj->set_pos(cur_pos);
+
+      // Clear info_wnd NEXT
+      mvwprintw(info_wnd, Y_INFO + 4, 0, "%36s", " ");
+      // Draw next obj
+      draw_object(info_wnd, next_obj);
+
+      request_obj = false;
+    }
+
+    /*
+     * Move down current obj
+     * Update table_obj
+     * Check GAME OVER
+     */
+    cur_pos = current_obj->get_pos();
     min_pos = current_obj->get_min_pos();
     max_pos = current_obj->get_max_pos();
     // Drop object from top to bottom
     if (tick == 100)
     {
       // Check touch
-      if ((pos.y + max_pos.y + 1 < GAME_HEIGHT) &&
+      if ((cur_pos.y + max_pos.y + 1 < GAME_HEIGHT) &&
           (check_touch(current_obj, {0, 1}) == false))
       {
-        pos.y += 1;
+        cur_pos.y += 1;
       }
       else
       {
-        if (pos.y < 0)
+        if (cur_pos.y < 0)
         {
           game_status = GAME_OVER;
           update_status(info_wnd, GAME_OVER);
         }
         else
         {
+          // Current obj touch table_obj
           update_table(current_obj);
-          game_score += scoring();
-          update_score(info_wnd, game_score);
+          cur_score = scoring();
+          if (cur_score > 0)
+          {
+            game_score += cur_score;
+            update_score(info_wnd, game_score);
+          }
           request_obj = true;
         }
       }
     }
-
+    // Clear all game_wnd
+    werase(game_wnd);
     draw_table(game_wnd);
     if (game_status == GAME_OVER)
       game_over_text(game_wnd);
 
-    // Change from local to global coordinate
-    min_pos.x += pos.x;
-    min_pos.y += pos.y;
-    max_pos.x += pos.x + 1;
-    max_pos.y += pos.y + 1;
-
-    if (request_obj)
-    {
-      // Get new obj
-      rand_x = rand() % 10; // 0~9
-      current_obj->init_data(next_obj->get_type());
-      min_pos = current_obj->get_min_pos();
-      max_pos = current_obj->get_max_pos();
-      //mvwprintw(label_wnd, Y_INFO + 17, 0, "%2d %2d", rand_x, max_pos.x);
-      if (rand_x + max_pos.x + 1 > GAME_WIDTH/2) rand_x = GAME_WIDTH/2 - max_pos.x - 1;
-      //mvwprintw(label_wnd, Y_INFO + 18, 0, "%2d", rand_x);
-      // Update new pos
-      pos.x = rand_x;
-      pos.y = -max_pos.y-1; // should start over screen
-      // Change from local to global coordinate
-      min_pos.x += pos.x;
-      min_pos.y += pos.y;
-      max_pos.x += pos.x + 1;
-      max_pos.y += pos.y + 1;
-      // Update info_wnd
-      next_obj->init_data((object_type)(rand() % 5));
-      next_obj->set_pos({0, Y_INFO + 4});
-      info_pos = next_obj->get_pos();
-      nmin_pos = next_obj->get_min_pos();
-      nmax_pos = next_obj->get_max_pos();
-      // Change from local to global coordinate
-      nmin_pos.x += info_pos.x;
-      nmin_pos.y += info_pos.y;
-      nmax_pos.x += info_pos.x + 1;
-      nmax_pos.y += info_pos.y + 1;
-      // Move to the center of info_wnd
-      info_pos.x += 2-(nmax_pos.x-nmin_pos.x)/2;
-      info_pos.y += 2-(nmax_pos.y-nmin_pos.y)/2;
-      next_obj->set_pos(info_pos);
-      //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", info_pos.x, info_pos.y);
-      //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", nmax_pos.x, nmax_pos.y);
-      request_obj = false;
-    }
-
-    // Keyboard handle
+    /*
+     * Keyboard handle game play button
+     * q: Quit
+     * p: Pausing/Playing
+     * r: New game
+     * KEY_UP/w/space: Rotate
+     * KEY_DOWN/s: Move down
+     * KEY_LEFT/a: Move left
+     * KEY_RIGHT/d: Mode right
+     */
     in_char = wgetch(main_wnd);
     in_char = tolower(in_char);
     switch(in_char)
     {
       case 'q':
         exit_requested = true;
-        break;
-      case KEY_UP:
-      case 'w':
-      case ' ':
-        if (game_status == GAME_PLAYING)
-          current_obj->rotate();
-        break;
-      case KEY_DOWN:
-      case 's':
-        if ((max_pos.y < GAME_HEIGHT) && (check_touch(current_obj, {0, 1}) == false) && (game_status == GAME_PLAYING))
-          pos.y += 1;
-        break;
-      case KEY_LEFT:
-      case 'a':
-        if ((min_pos.x > 0) && (check_touch(current_obj, {-1, 0}) == false) && (game_status == GAME_PLAYING))
-          pos.x -= 1;
-        break;
-      case KEY_RIGHT:
-      case 'd':
-        if ((max_pos.x < GAME_WIDTH/2) && (check_touch(current_obj, {1, 0}) == false) && (game_status == GAME_PLAYING))
-          pos.x += 1;
         break;
       case 'p':
         //if (max_pos.x <= GAME_WIDTH/2)
@@ -442,26 +443,51 @@ void run()
         if (game_status == GAME_OVER)
           request_obj = new_game();
         break;
+      case KEY_UP:
+      case 'w':
+      case ' ':
+        if (game_status == GAME_PLAYING)
+          current_obj->rotate();
+        break;
+      case KEY_DOWN:
+      case 's':
+        if ((game_status == GAME_PLAYING) &&
+            (check_touch(current_obj, {0, 1}) == false) &&
+            (cur_pos.y + max_pos.y + 1 < GAME_HEIGHT))
+          cur_pos.y += 1;
+        break;
+      case KEY_LEFT:
+      case 'a':
+        if ((game_status == GAME_PLAYING) &&
+            (check_touch(current_obj, {-1, 0}) == false) &&
+            (cur_pos.x + min_pos.x > 0))
+          cur_pos.x -= 1;
+        break;
+      case KEY_RIGHT:
+      case 'd':
+        if ((game_status == GAME_PLAYING) &&
+            (check_touch(current_obj, {1, 0}) == false) &&
+            (cur_pos.x + max_pos.x + 1 < GAME_WIDTH/2))
+          cur_pos.x += 1;
+        break;
       default:
         break;
     }
-
     if (exit_requested) break;
 
-    draw_object(info_wnd, next_obj);
-
-    current_obj->set_pos(pos);
-    //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", pos.x, pos.y);
+    // Update current obj
+    current_obj->set_pos(cur_pos);
+    //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", cur_pos.x, cur_pos.y);
     //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", max_pos.x, max_pos.y);
     draw_object(game_wnd, current_obj);
 
     // refresh all
-    wrefresh(main_wnd);
+    //wrefresh(main_wnd);
     wrefresh(game_wnd);
     wrefresh(label_wnd);
     wrefresh(info_wnd);
 
-    usleep(10000); // 10 ms
+    usleep(1000); // 10 ms
 
     if (game_status == GAME_PLAYING)
       tick +=1;
