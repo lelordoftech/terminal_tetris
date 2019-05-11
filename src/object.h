@@ -24,7 +24,7 @@ class game_object
 protected:
   object_type type;
   vec2i pos;
-  uint_fast8_t rotate_dir;
+  //uint_fast8_t rotate_dir;
   uint_fast8_t color;
   vec2ui data[4];
   
@@ -42,8 +42,10 @@ public:
   
   vec2i get_min_pos();
   vec2i get_max_pos();
+  vec2i get_center();
   
   void rotate();
+  void rotate_back();
 };
 
 #endif /* object_h */

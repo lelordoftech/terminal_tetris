@@ -320,9 +320,11 @@ void run()
   int in_char;
   bool exit_requested = false;
   bool request_obj = true;
-  vec2i cur_pos;
-  vec2i min_pos;
-  vec2i max_pos;
+  vec2i cur_pos = {0,0};
+  vec2i min_pos = {0,0};
+  vec2i max_pos = {0,0};
+  vec2i center = {0,0};
+  vec2i rotate_change = {0,0};
   uint_fast8_t cur_score = 0;
   int_fast8_t rand_x = 0;
   
@@ -348,7 +350,8 @@ void run()
       max_pos = current_obj->get_max_pos();
       // Random x position
       rand_x = rand() % 10; // 0~9
-      if (rand_x + max_pos.x + 1 > GAME_WIDTH/2) rand_x = GAME_WIDTH/2 - max_pos.x - 1;
+      if (rand_x + max_pos.x + 1 > GAME_WIDTH/2)
+        rand_x = GAME_WIDTH/2 - max_pos.x - 1;
       // Update new cur_pos
       cur_pos.x = rand_x;
       cur_pos.y = -max_pos.y-1; // should start over screen
@@ -447,7 +450,39 @@ void run()
       case 'w':
       case ' ':
         if (game_status == GAME_PLAYING)
+        {
+          // Try to rotate, will recover back later if touch table
+          center = current_obj->get_center();
           current_obj->rotate();
+          // Update cur_pose to avoid over screen and touch table_obj
+          cur_pos = current_obj->get_pos();
+          min_pos = current_obj->get_min_pos();
+          max_pos = current_obj->get_max_pos();
+          // keep center
+          cur_pos.x += center.x - current_obj->get_center().x;
+          cur_pos.y += center.y - current_obj->get_center().y;
+          // over left screen
+          if (cur_pos.x + min_pos.x < 0)
+            cur_pos.x = -min_pos.x;
+          // over right screen
+          if (cur_pos.x + max_pos.x + 1 > GAME_WIDTH/2)
+            cur_pos.x = GAME_WIDTH/2 - max_pos.x - 1;
+          // over top screen
+          if (cur_pos.y + min_pos.y < 0)
+            cur_pos.y = -min_pos.y;
+          // over bottom screen
+          if (cur_pos.y + max_pos.y + 1 > GAME_HEIGHT)
+            cur_pos.y = GAME_HEIGHT - max_pos.y - 1;
+          // avoid touch
+          rotate_change.x = cur_pos.x-current_obj->get_pos().x;
+          rotate_change.y = cur_pos.y-current_obj->get_pos().y;
+          if (check_touch(current_obj, rotate_change)) {
+            // Recover data of current_obj and cur_pos value
+            current_obj->rotate_back();
+            cur_pos = current_obj->get_pos();
+          }
+          current_obj->set_pos(cur_pos);
+        }
         break;
       case KEY_DOWN:
       case 's':
@@ -478,7 +513,7 @@ void run()
     // Update current obj
     current_obj->set_pos(cur_pos);
     //mvwprintw(info_wnd, Y_INFO + 17, 0, "%2d %2d", cur_pos.x, cur_pos.y);
-    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", max_pos.x, max_pos.y);
+    //mvwprintw(info_wnd, Y_INFO + 18, 0, "%2d %2d", center.x, center.y);
     draw_object(game_wnd, current_obj);
 
     // refresh all
@@ -487,7 +522,7 @@ void run()
     wrefresh(label_wnd);
     wrefresh(info_wnd);
 
-    usleep(1000); // 10 ms
+    usleep(10000); // 10 ms
 
     if (game_status == GAME_PLAYING)
       tick +=1;
