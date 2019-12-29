@@ -2,7 +2,10 @@
 
 [//]: # (Image References)
 
+[image0]: ./img/Tetris.PNG "TETRIS"
 [image1]: ./img/CMD_Layout.PNG "CMD Layout"
+
+![alt text][image0]
 
 ## Prepare
 WINDOWS:
