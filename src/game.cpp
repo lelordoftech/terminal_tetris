@@ -5,9 +5,15 @@
 //  Created by Vuong Le Quoc on 2019/05/06.
 //
 
+#if defined(_WIN32)
+#include <curses.h>
+#include <windows.h> // usleep
+#else
 #include <ncurses.h>
-#include <string> // std::string
 #include <unistd.h> // usleep
+#endif
+
+#include <string> // std::string
 #include <stdlib.h> // rand
 #include <time.h>
 
@@ -39,6 +45,15 @@ uint_fast8_t game_speed = 1;
 uint_fast8_t game_level = 1;
 bool game_sound = false;
 game_state game_status = GAME_OVER;
+
+void mySleep(int sleepMs)
+{
+  #if defined(_WIN32)
+    Sleep(sleepMs);
+  #else
+    usleep(sleepMs*1000);
+  #endif
+}
 
 void draw_object(WINDOW* wnd, game_object* obj)
 {
@@ -226,15 +241,51 @@ int init()
   has_color = has_colors();
   
   // area offset_x, offset_y, bounds_x, bounds_y
-  // all screen area 42x20
-  // game area 20x20
-  // label area 8x20
-  // info area 9x20
-  screen_area.update(0, 0, GAME_WIDTH+LABEL_WIDTH+INFO_WIDTH+3, GAME_HEIGHT+PANEL_HEIGHT+3);
+  /*
+  ******************************************
+  *01234567890123456789*012345678*012345678*
+  *1                   *         *         *
+  *2                   *         *         *
+  *3                   *         *         *
+  *4                   *         *         *
+  *5                   *         *         *
+  *6                   *         *         *
+  *7                   *         *         *
+  *8                   *         *         *
+  *9                   *         *         *
+  *0       GAME        *  LABEL  *  INFO   *
+  *1                   *         *         *
+  *2                   *         *         *
+  *3                   *         *         *
+  *4                   *         *         *
+  *5                   *         *         *
+  *6                   *         *         *
+  *7                   *         *         *
+  *8                   *         *         *
+  *9                   *         *         *
+  ******************************************
+  *0                                       *
+  *1                                       *
+  *2                                       *
+  *3                                       *
+  *4                 PANEL                 *
+  *5                                       *
+  *6                                       *
+  *7                                       *
+  *8                                       *
+  ******************************************
+  */
+  //                   W x H
+  // all screen area  42 x 32
+  //   game area      20 x 20
+  //   label area      9 x 20
+  //   info area       9 x 20
+  //   panel area     40 x  9
+  screen_area.update(0, 0, 1+GAME_WIDTH+1+LABEL_WIDTH+1+INFO_WIDTH+1, 1+GAME_HEIGHT+1+PANEL_HEIGHT+1);
   game_area.update(1, 1, GAME_WIDTH, GAME_HEIGHT);
-  label_area.update(GAME_WIDTH + 2, 1, LABEL_WIDTH, GAME_HEIGHT);
-  info_area.update(GAME_WIDTH + LABEL_WIDTH + 2, 1, INFO_WIDTH, GAME_HEIGHT);
-  panel_area.update(1, GAME_HEIGHT + 2, GAME_WIDTH+LABEL_WIDTH+INFO_WIDTH+1, PANEL_HEIGHT);
+  label_area.update(1+GAME_WIDTH+1, 1, LABEL_WIDTH, GAME_HEIGHT);
+  info_area.update(1+GAME_WIDTH+1+LABEL_WIDTH+1, 1, INFO_WIDTH, GAME_HEIGHT);
+  panel_area.update(1, 1+GAME_HEIGHT+1, GAME_WIDTH+1+LABEL_WIDTH+1+INFO_WIDTH, PANEL_HEIGHT);
   
   // multi windows
   // newwin nlines, ncols, begin_y, begin_x
@@ -376,7 +427,7 @@ void run()
       }
       if (exit_requested) break;
 
-      usleep(100000); // 100 ms
+      mySleep(100); // 100 ms
       continue;
     }
 
@@ -569,7 +620,7 @@ void run()
     wrefresh(game_wnd);
     wrefresh(info_wnd);
 
-    usleep(10000); // 10 ms
+    mySleep(10); // 10 ms
 
     if (game_status == GAME_PLAYING)
       tick +=1;

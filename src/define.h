@@ -12,7 +12,7 @@
 
 #define GAME_WIDTH 20
 #define GAME_HEIGHT 20
-#define LABEL_WIDTH 10
+#define LABEL_WIDTH 9
 #define INFO_WIDTH 9
 #define PANEL_HEIGHT 9
 
