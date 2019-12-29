@@ -14,6 +14,13 @@ mingw-get install mingw32-libpdcurses
 
 UNIX:
 1. Install libncurses
+- Ubuntu:
+```
+sudo apt-get install libncurses5
+sudo apt-get install libncurses5-dev
+```
+
+- MacOS: TODO
 
 ## Compile
 WINDOWS:
